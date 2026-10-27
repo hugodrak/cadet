@@ -68,6 +68,7 @@ pub struct App {
     show_settings: bool,
     show_about: bool,
     /// Plugin labels the native menu was last built with.
+    #[cfg(target_os = "macos")]
     menu_plugins: Option<Vec<String>>,
     #[cfg(target_os = "macos")]
     dump_menu: bool,
@@ -111,6 +112,7 @@ impl App {
             settings: Settings::load(),
             show_settings: false,
             show_about: false,
+            #[cfg(target_os = "macos")]
             menu_plugins: None,
             #[cfg(target_os = "macos")]
             dump_menu: false,
