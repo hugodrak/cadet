@@ -1,6 +1,8 @@
 name: draft
 
 # New PRs start as drafts; CI runs once they're marked "Ready for review".
+# Turned on by the repo variable DRAFT_PRS=true. Converting to draft needs a token in the
+# DRAFT_TOKEN secret (fine-grained, this repo, Pull requests: read and write); GITHUB_TOKEN can't.
 # pull_request_target can write to PRs from forks. It never checks out PR code, so it's safe.
 on:
   pull_request_target:
@@ -11,11 +13,11 @@ permissions:
 
 jobs:
   draft:
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ vars.DRAFT_PRS == 'true' && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.DRAFT_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
