@@ -18,15 +18,14 @@ pub struct MeshData {
 impl MeshData {
     pub fn cuboid(min: Vec3, max: Vec3) -> Self {
         let mut m = Self::default();
-        let c = |i: usize| Vec3::new(
-            if i & 1 == 0 { min.x } else { max.x },
-            if i & 2 == 0 { min.y } else { max.y },
-            if i & 4 == 0 { min.z } else { max.z },
-        );
+        let c = |i: usize| Vec3::new(if i & 1 == 0 { min.x } else { max.x }, if i & 2 == 0 { min.y } else { max.y }, if i & 4 == 0 { min.z } else { max.z });
         let faces = [
-            ([0, 2, 3, 1], -Vec3::Z), ([4, 5, 7, 6], Vec3::Z),
-            ([0, 1, 5, 4], -Vec3::Y), ([2, 6, 7, 3], Vec3::Y),
-            ([0, 4, 6, 2], -Vec3::X), ([1, 3, 7, 5], Vec3::X),
+            ([0, 2, 3, 1], -Vec3::Z),
+            ([4, 5, 7, 6], Vec3::Z),
+            ([0, 1, 5, 4], -Vec3::Y),
+            ([2, 6, 7, 3], Vec3::Y),
+            ([0, 4, 6, 2], -Vec3::X),
+            ([1, 3, 7, 5], Vec3::X),
         ];
         for (q, n) in faces {
             let base = m.vertices.len() as u32;

@@ -140,7 +140,15 @@ pub const MENUS: &[(&str, &[&[Action]])] = {
         ("File", &[&[New, Open], &[Save, SaveAs], &[Export, ExportStep], &[Quit]]),
         ("Edit", &[&[Undo, Redo], &[Delete], &[Palette], &[Settings]]),
         ("View", &[&[Home, Front, Right, Top], &[ToggleGrid, ToggleEdges, ToggleTheme]]),
-        ("Sketch", &[&[Sketch, Finish], &[Line, Rect, Circle, Arc, Dimension], &[Horizontal, Vertical, Parallel, Perpendicular, Equal, Tangent, Coincident, Fix], &[Construction]]),
+        (
+            "Sketch",
+            &[
+                &[Sketch, Finish],
+                &[Line, Rect, Circle, Arc, Dimension],
+                &[Horizontal, Vertical, Parallel, Perpendicular, Equal, Tangent, Coincident, Fix],
+                &[Construction],
+            ],
+        ),
         ("Model", &[&[Extrude, Revolve], &[Fillet, Chamfer]]),
         ("Inspect", &[&[Measure]]),
         ("Plugins", &[&[Console], &[OpenPlugins, ReloadPlugins]]),
@@ -161,15 +169,8 @@ pub fn get(action: Action) -> &'static Command {
 }
 
 pub fn shortcut_text(c: &Command) -> String {
-    const MAC: egui::ModifierNames = egui::ModifierNames {
-        is_short: true,
-        alt: "\u{e8a8}",
-        ctrl: "\u{eca6}",
-        shift: "\u{e52e}",
-        mac_cmd: "\u{e1c4}",
-        mac_alt: "\u{e8a8}",
-        concat: "",
-    };
+    const MAC: egui::ModifierNames =
+        egui::ModifierNames { is_short: true, alt: "\u{e8a8}", ctrl: "\u{eca6}", shift: "\u{e52e}", mac_cmd: "\u{e1c4}", mac_alt: "\u{e8a8}", concat: "" };
     let mac = cfg!(target_os = "macos");
     let names = if mac { MAC } else { egui::ModifierNames::NAMES };
     c.key.map(|(m, k)| egui::KeyboardShortcut::new(m, k).format(&names, mac).replace('⏎', "\u{e782}")).unwrap_or_default()
@@ -227,16 +228,11 @@ impl Palette {
             .filter(|c| c.action != Action::Palette && in_scope(c, sketch))
             .map(|c| (c.label.to_string(), c.id, c.icon, shortcut_text(c), Choice::Action(c.action)));
         let plugins = extra.iter().enumerate().map(|(i, l)| (format!("Plugin: {l}"), "plugin", icons::PLUGIN, String::new(), Choice::Plugin(i)));
-        let mut hits: Vec<_> = builtin
-            .chain(plugins)
-            .filter_map(|e| fuzzy(&self.query, &e.0).or_else(|| fuzzy(&self.query, e.1)).map(|s| (s, e)))
-            .collect();
+        let mut hits: Vec<_> = builtin.chain(plugins).filter_map(|e| fuzzy(&self.query, &e.0).or_else(|| fuzzy(&self.query, e.1)).map(|s| (s, e))).collect();
         hits.sort_by_key(|(s, _)| -s);
         self.selected = self.selected.min(hits.len().saturating_sub(1));
 
-        let (up, down, enter) = ctx.input_mut(|i| {
-            (i.consume_key(NONE, Key::ArrowUp), i.consume_key(NONE, Key::ArrowDown), i.consume_key(NONE, Key::Enter))
-        });
+        let (up, down, enter) = ctx.input_mut(|i| (i.consume_key(NONE, Key::ArrowUp), i.consume_key(NONE, Key::ArrowDown), i.consume_key(NONE, Key::Enter)));
         if up {
             self.selected = self.selected.saturating_sub(1);
         }
@@ -245,8 +241,7 @@ impl Palette {
         }
         let mut chosen = enter.then(|| hits.get(self.selected).map(|(_, e)| e.4)).flatten();
 
-        let area = egui::Modal::default_area(egui::Id::unique("palette"))
-            .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 90.0));
+        let area = egui::Modal::default_area(egui::Id::unique("palette")).anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 90.0));
         let resp = egui::Modal::new(egui::Id::unique("palette"))
             .area(area)
             .backdrop_color(egui::Color32::from_black_alpha(60))
@@ -268,10 +263,7 @@ impl Palette {
                 ui.separator();
                 for (i, (_, (label, _, icon, keys, choice))) in hits.iter().enumerate().take(10) {
                     let sel = i == self.selected;
-                    let r = ui.add_sized(
-                        [ui.available_width(), 30.0],
-                        egui::Button::new("").fill(if sel { p.hover } else { egui::Color32::TRANSPARENT }),
-                    );
+                    let r = ui.add_sized([ui.available_width(), 30.0], egui::Button::new("").fill(if sel { p.hover } else { egui::Color32::TRANSPARENT }));
                     let rect = r.rect.shrink2(egui::vec2(10.0, 0.0));
                     let painter = ui.painter();
                     let font = egui::FontId::proportional(13.0);

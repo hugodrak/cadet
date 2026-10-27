@@ -1,7 +1,7 @@
 use crate::commands::Action;
-use crate::theme::{self, Palette};
 use crate::icons;
 use crate::snap::{self, Marker};
+use crate::theme::{self, Palette};
 use cadet_core::Plane;
 use cadet_render::Camera;
 use cadet_sketch::{self as cs, Constraint, E, Entity, P, Sketch};
@@ -398,7 +398,9 @@ impl Editor {
         }
         match e {
             Entity::Line { a, b } => (1..n).map(|k| (k, sk.pt(a).lerp(sk.pt(b), k as f64 / n as f64), k as f64 / n as f64)).collect(),
-            Entity::Circle { c, r } => (0..n).map(|k| (k, sk.pt(c) + DVec2::from_angle(std::f64::consts::TAU * k as f64 / n as f64) * sk.params[r], 0.0)).collect(),
+            Entity::Circle { c, r } => {
+                (0..n).map(|k| (k, sk.pt(c) + DVec2::from_angle(std::f64::consts::TAU * k as f64 / n as f64) * sk.params[r], 0.0)).collect()
+            }
             Entity::Arc { c, a, b } => {
                 let (c, a, b) = (sk.pt(c), sk.pt(a), sk.pt(b));
                 let a0 = (a - c).to_angle();
@@ -418,11 +420,16 @@ impl Editor {
     fn snap(&self, sk: &Sketch, view: &View, pos: Pos2) -> Option<(Marker, bool, Pick)> {
         let q = view.to_sketch(pos)?;
         let d = |a: DVec2| view.to_screen(a).distance(pos);
-        let nearest = |it: &mut dyn Iterator<Item = (DVec2, Marker, bool, Pick)>| it.map(|c| (d(c.0), c)).filter(|x| x.0 < SNAP_PX).min_by(|a, b| a.0.total_cmp(&b.0)).map(|x| x.1);
-        let centers: Vec<P> = sk.live().filter_map(|(_, e)| match e {
-            Entity::Circle { c, .. } | Entity::Arc { c, .. } => Some(c),
-            _ => None,
-        }).collect();
+        let nearest = |it: &mut dyn Iterator<Item = (DVec2, Marker, bool, Pick)>| {
+            it.map(|c| (d(c.0), c)).filter(|x| x.0 < SNAP_PX).min_by(|a, b| a.0.total_cmp(&b.0)).map(|x| x.1)
+        };
+        let centers: Vec<P> = sk
+            .live()
+            .filter_map(|(_, e)| match e {
+                Entity::Circle { c, .. } | Entity::Arc { c, .. } => Some(c),
+                _ => None,
+            })
+            .collect();
         let points = sk.points.iter().map(|&p| (sk.pt(p), if centers.contains(&p) { Marker::Center } else { Marker::Point }, false, Pick::Point(p)));
         if let Some(c) = nearest(&mut points.into_iter()) {
             return Some((c.1, c.2, c.3));
@@ -451,8 +458,14 @@ impl Editor {
         if let Some(c) = nearest(&mut crosses.into_iter()) {
             return Some((c.1, c.2, c.3));
         }
-        let on_h = hs.iter().filter(|g| within(g, q.x)).map(|g| (DVec2::new(q.x, g.at), Marker::Guide, false, Pick::Aligned(DVec2::new(q.x, g.at), Some(g.source), None)));
-        let on_v = vs.iter().filter(|g| within(g, q.y)).map(|g| (DVec2::new(g.at, q.y), Marker::Guide, false, Pick::Aligned(DVec2::new(g.at, q.y), None, Some(g.source))));
+        let on_h = hs
+            .iter()
+            .filter(|g| within(g, q.x))
+            .map(|g| (DVec2::new(q.x, g.at), Marker::Guide, false, Pick::Aligned(DVec2::new(q.x, g.at), Some(g.source), None)));
+        let on_v = vs
+            .iter()
+            .filter(|g| within(g, q.y))
+            .map(|g| (DVec2::new(g.at, q.y), Marker::Guide, false, Pick::Aligned(DVec2::new(g.at, q.y), None, Some(g.source))));
         let near_guide = |c: &(DVec2, Marker, bool, Pick)| d(c.0) < 7.0;
         let curve_hover = matches!(self.hover, Some(Sel::Entity(_)));
         if let Some(c) = on_h.chain(on_v).filter(near_guide).min_by(|a, b| d(a.0).total_cmp(&d(b.0))).filter(|_| !curve_hover) {
@@ -530,14 +543,17 @@ impl Editor {
             self.escape();
         }
         if resp.double_clicked()
-            && let Some(Sel::Constraint(c)) = self.hover {
-                self.edit_dim(sk, c);
-            }
+            && let Some(Sel::Constraint(c)) = self.hover
+        {
+            self.edit_dim(sk, c);
+        }
 
-        if self.tool == Tool::Select && resp.drag_started_by(PointerButton::Primary)
-            && let (Some(h), Some(grab)) = (self.hover, self.cursor) {
-                self.start_drag(sk, h, grab);
-            }
+        if self.tool == Tool::Select
+            && resp.drag_started_by(PointerButton::Primary)
+            && let (Some(h), Some(grab)) = (self.hover, self.cursor)
+        {
+            self.start_drag(sk, h, grab);
+        }
         let Some(drag) = &self.drag else { return false };
         if let Some(cur) = self.cursor.filter(|_| resp.dragged_by(PointerButton::Primary)) {
             let mut targets: Vec<(usize, f64)> = drag.points.iter().flat_map(|&(p, off)| [(p, (cur + off).x), (p + 1, (cur + off).y)]).collect();
@@ -685,7 +701,9 @@ impl Editor {
             _ => return,
         };
         self.pending.clear();
-        if let Some(i) = sk.constraints.iter().position(|x| x.value().is_some() && std::mem::discriminant(x) == std::mem::discriminant(&c) && same_target(x, &c)) {
+        if let Some(i) =
+            sk.constraints.iter().position(|x| x.value().is_some() && std::mem::discriminant(x) == std::mem::discriminant(&c) && same_target(x, &c))
+        {
             self.edit_dim(sk, i);
             return;
         }
@@ -801,7 +819,9 @@ impl Editor {
                         let Some(center) = (match sk.entity(e) {
                             Some(Entity::Circle { c, .. } | Entity::Arc { c, .. }) => Some(sk.pt(c)),
                             _ => None,
-                        }) else { continue };
+                        }) else {
+                            continue;
+                        };
                         let edge = center + DVec2::splat(std::f64::consts::FRAC_1_SQRT_2) * v;
                         let (sc, se) = (view.to_screen(center), view.to_screen(edge));
                         painter.line_segment([sc, se], Stroke::new(1.0, p.weak));
@@ -811,7 +831,13 @@ impl Editor {
                 };
                 let galley = painter.layout_no_wrap(text, font.clone(), p.text);
                 let rect = Rect::from_center_size(anchor, galley.size() + vec2(10.0, 4.0));
-                painter.rect(rect, 4, if sel { p.accent.gamma_multiply(0.4) } else { p.card }, Stroke::new(1.0, if hot { p.accent } else { p.line }), egui::StrokeKind::Inside);
+                painter.rect(
+                    rect,
+                    4,
+                    if sel { p.accent.gamma_multiply(0.4) } else { p.card },
+                    Stroke::new(1.0, if hot { p.accent } else { p.line }),
+                    egui::StrokeKind::Inside,
+                );
                 painter.galley(rect.center() - galley.size() * 0.5, galley, p.text);
                 if let Some(d) = self.dim_edit.as_mut().filter(|d| d.c == ci) {
                     d.pos = anchor;
@@ -866,7 +892,13 @@ impl Editor {
             (Tool::Line, [a]) => {
                 painter.line_segment([s(*a), s(cur)], stroke);
                 let d = cur - *a;
-                let hint = if d.y.abs() <= d.x.abs() * HV_TOL { "H" } else if d.x.abs() <= d.y.abs() * HV_TOL { "V" } else { "" };
+                let hint = if d.y.abs() <= d.x.abs() * HV_TOL {
+                    "H"
+                } else if d.x.abs() <= d.y.abs() * HV_TOL {
+                    "V"
+                } else {
+                    ""
+                };
                 let label = format!("{}  {}", fmt_len(d.length()), hint);
                 painter.text(s(cur) + vec2(14.0, 14.0), Align2::LEFT_TOP, label.trim(), FontId::proportional(11.0), p.weak);
             }
@@ -979,7 +1011,13 @@ pub fn draw_planes(painter: &Painter, view: &View, hover: Option<usize>, p: &Pal
         let c = colors[i];
         painter.add(Shape::convex_polygon(quad.to_vec(), c.gamma_multiply(if hot { 0.45 } else { 0.16 }), Stroke::new(if hot { 2.0 } else { 1.0 }, c)));
         let center = quad.iter().fold(Vec2::ZERO, |a, q| a + q.to_vec2()) / 4.0;
-        painter.text(center.to_pos2(), Align2::CENTER_CENTER, pl.name(), FontId::new(13.0, egui::FontFamily::Name("bold".into())), if hot { p.text } else { p.weak });
+        painter.text(
+            center.to_pos2(),
+            Align2::CENTER_CENTER,
+            pl.name(),
+            FontId::new(13.0, egui::FontFamily::Name("bold".into())),
+            if hot { p.text } else { p.weak },
+        );
     }
 }
 

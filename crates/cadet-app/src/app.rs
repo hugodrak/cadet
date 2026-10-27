@@ -1,11 +1,11 @@
 use crate::commands::{self, Action, Choice};
-use crate::python::Python;
 use crate::features::{FeatureEdit, Outcome};
-use crate::measure::Measure;
-use crate::sketch::{self, Editor, Tool, View};
-use crate::settings::{self, Settings};
-use crate::{devtools, files, icons, python, snap, theme};
 use crate::kernel::{Event, Kernel, Model};
+use crate::measure::Measure;
+use crate::python::Python;
+use crate::settings::{self, Settings};
+use crate::sketch::{self, Editor, Tool, View};
+use crate::{devtools, files, icons, python, snap, theme};
 use cadet_core::{Document, Kind, Plane};
 use cadet_render::{Camera, MeshData, Vertex, Viewport};
 use cadet_sketch::Sketch;
@@ -467,7 +467,13 @@ impl App {
             for (name, groups) in commands::MENUS {
                 let mut items = vec![];
                 if *name == "Plugins" {
-                    items.extend(plugins.iter().enumerate().map(|(i, l)| Item::Pick { label: l.clone(), tag: PLUGIN_TAG + i as isize, key: String::new(), shift: false, alt: false }));
+                    items.extend(plugins.iter().enumerate().map(|(i, l)| Item::Pick {
+                        label: l.clone(),
+                        tag: PLUGIN_TAG + i as isize,
+                        key: String::new(),
+                        shift: false,
+                        alt: false,
+                    }));
                     items.push(Item::Separator);
                 }
                 for group in *groups {
@@ -484,7 +490,15 @@ impl App {
             }
             menus.insert(
                 menus.len() - 1,
-                ("Window", vec![sys("Minimize", objc2::sel!(performMiniaturize:), "m", false), sys("Zoom", objc2::sel!(performZoom:), "", false), Item::Separator, sys("Bring All to Front", objc2::sel!(arrangeInFront:), "", false)]),
+                (
+                    "Window",
+                    vec![
+                        sys("Minimize", objc2::sel!(performMiniaturize:), "m", false),
+                        sys("Zoom", objc2::sel!(performZoom:), "", false),
+                        Item::Separator,
+                        sys("Bring All to Front", objc2::sel!(arrangeInFront:), "", false),
+                    ],
+                ),
             );
             macos::set_menus(&menus);
             self.menu_plugins = Some(plugins.to_vec());
@@ -749,7 +763,9 @@ impl App {
                     sketch::draw_face_hint(&painter, &View { plane: *plane, ..view }, plane, *at, p);
                 }
             }
-            Mode::Feature(fe) => fe.draw(&painter, &view, &self.doc, p, self.model.base_edges.as_deref().unwrap_or(&self.model.edges), model_center(&self.model)),
+            Mode::Feature(fe) => {
+                fe.draw(&painter, &view, &self.doc, p, self.model.base_edges.as_deref().unwrap_or(&self.model.edges), model_center(&self.model))
+            }
             Mode::Measure(m) => m.draw(&painter, &view, p),
             Mode::Model => {}
         }
@@ -763,7 +779,13 @@ impl App {
             ui.horizontal(|ui| {
                 use Action::*;
                 let groups: &[&[Action]] = if tool.is_some() {
-                    &[&[Select], &[Line, Rect, Circle, Arc], &[Dimension], &[Horizontal, Vertical, Parallel, Perpendicular, Equal, Tangent, Coincident, Fix, Construction], &[Finish]]
+                    &[
+                        &[Select],
+                        &[Line, Rect, Circle, Arc],
+                        &[Dimension],
+                        &[Horizontal, Vertical, Parallel, Perpendicular, Equal, Tangent, Coincident, Fix, Construction],
+                        &[Finish],
+                    ]
                 } else {
                     &[&[Sketch], &[Extrude, Revolve, Fillet, Chamfer], &[Measure, Export]]
                 };
@@ -822,7 +844,13 @@ impl App {
                 for (i, f) in self.doc.features.iter().enumerate() {
                     ui.horizontal(|ui| {
                         let err = self.error_of(f.id);
-                        let col = if err.is_some() { p.error() } else if Some(i) == active { p.accent } else { p.weak };
+                        let col = if err.is_some() {
+                            p.error()
+                        } else if Some(i) == active {
+                            p.accent
+                        } else {
+                            p.weak
+                        };
                         ui.label(RichText::new(Self::feature_icon(&f.kind)).color(col));
                         let r = ui.add(egui::Label::new(f.name.as_str()).sense(Sense::click())).on_hover_text(err.unwrap_or("Double-click to edit"));
                         if r.double_clicked() {
@@ -917,7 +945,15 @@ impl App {
                     let on = Some(i) == rolled;
                     let after = rolled.is_some_and(|r| i > r);
                     let err = self.error_of(f.id);
-                    let fg = if on { p.on_accent } else if err.is_some() { p.error() } else if after { p.weak } else { p.text };
+                    let fg = if on {
+                        p.on_accent
+                    } else if err.is_some() {
+                        p.error()
+                    } else if after {
+                        p.weak
+                    } else {
+                        p.text
+                    };
                     let chip = egui::Button::new(RichText::new(format!("{}  {}", Self::feature_icon(&f.kind), f.name)).color(fg))
                         .fill(if on { p.accent } else { p.hover })
                         .corner_radius(6);
@@ -991,7 +1027,13 @@ impl App {
                     1 => (p.free, "1 degree of freedom".to_string()),
                     n => (p.free, format!("{n} degrees of freedom")),
                 };
-                Some((format!("{} on {plane}", f.name), col, state, ed.hint(), format!("Snap: {} · {}1–{}9", snap::division_name(self.divisions), icons::COMMAND, icons::COMMAND)))
+                Some((
+                    format!("{} on {plane}", f.name),
+                    col,
+                    state,
+                    ed.hint(),
+                    format!("Snap: {} · {}1–{}9", snap::division_name(self.divisions), icons::COMMAND, icons::COMMAND),
+                ))
             }
             Mode::PickPlane(_) => Some(("New sketch".into(), p.accent, "Pick a plane or a flat face".into(), "Click to start · Esc to cancel", String::new())),
             _ => None,
@@ -1050,7 +1092,17 @@ impl eframe::App for App {
                 _ => self.mode = Mode::Model,
             }
         }
-        const DIGITS: [egui::Key; 9] = [egui::Key::Num1, egui::Key::Num2, egui::Key::Num3, egui::Key::Num4, egui::Key::Num5, egui::Key::Num6, egui::Key::Num7, egui::Key::Num8, egui::Key::Num9];
+        const DIGITS: [egui::Key; 9] = [
+            egui::Key::Num1,
+            egui::Key::Num2,
+            egui::Key::Num3,
+            egui::Key::Num4,
+            egui::Key::Num5,
+            egui::Key::Num6,
+            egui::Key::Num7,
+            egui::Key::Num8,
+            egui::Key::Num9,
+        ];
         if let Some(n) = (1..=9).find(|&n| ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, DIGITS[n as usize - 1]))) {
             self.divisions = n;
             self.notify(&ctx, format!("Snapping to {}", snap::division_name(n)));
@@ -1102,7 +1154,9 @@ impl eframe::App for App {
         if self.show_shortcuts {
             shortcut_sheet(&ctx, &mut self.show_shortcuts);
         }
-        if self.show_settings && let Some(settings::Request::OpenPluginsFolder) = settings::window(&ctx, &mut self.show_settings, &mut self.settings) {
+        if self.show_settings
+            && let Some(settings::Request::OpenPluginsFolder) = settings::window(&ctx, &mut self.show_settings, &mut self.settings)
+        {
             self.run(&ctx, Action::OpenPlugins);
         }
         if self.show_about {
@@ -1132,7 +1186,9 @@ fn model_snaps(edges: &[cadet_core::kernel::EdgeRef], plane: &Plane, n: u32) -> 
         if let Some((c, _)) = e.circle {
             out.push(sketch::ModelSnap { at: local(c), marker: snap::Marker::Center });
         }
-        out.extend(snap::divide(&e.points, n, closed).into_iter().map(|(k, q)| sketch::ModelSnap { at: local(q), marker: snap::Marker::Division(k.max(1), n) }));
+        out.extend(
+            snap::divide(&e.points, n, closed).into_iter().map(|(k, q)| sketch::ModelSnap { at: local(q), marker: snap::Marker::Division(k.max(1), n) }),
+        );
     }
     out
 }
@@ -1247,8 +1303,7 @@ fn floating<R>(ctx: &egui::Context, id: &str, anchor: Align2, pos: Pos2, add: im
 
 fn icon_button(ui: &mut egui::Ui, icon: &str, tip: &str) -> egui::Response {
     let p = theme::palette(ui.ctx());
-    ui.add(egui::Button::new(RichText::new(icon).size(16.0).color(p.weak)).min_size(vec2(28.0, 28.0)))
-        .on_hover_text(tip)
+    ui.add(egui::Button::new(RichText::new(icon).size(16.0).color(p.weak)).min_size(vec2(28.0, 28.0))).on_hover_text(tip)
 }
 
 fn tool_button(ui: &mut egui::Ui, icon: &str, label: &str, primary: bool) -> egui::Response {

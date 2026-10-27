@@ -15,17 +15,37 @@ const MAGIC: &[u8; 8] = b"\x00CADETv1";
 #[derive(Serialize, Deserialize)]
 pub enum Request {
     /// `base`: also return the edges as they are just before that feature (for picking edges to round).
-    Evaluate { doc: Document, upto: usize, skip: Vec<u32>, base: Option<usize> },
-    Ray { origin: DVec3, dir: DVec3 },
+    Evaluate {
+        doc: Document,
+        upto: usize,
+        skip: Vec<u32>,
+        base: Option<usize>,
+    },
+    Ray {
+        origin: DVec3,
+        dir: DVec3,
+    },
     /// `tolerance`: max STL deviation from the true surface, in mm.
-    Export { path: PathBuf, step: bool, tolerance: f64 },
+    Export {
+        path: PathBuf,
+        step: bool,
+        tolerance: f64,
+    },
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum Response {
     /// Sent before each feature runs, so a crash can be blamed on it.
     Progress(usize),
-    Model { mesh: Tessellation, edges: Vec<EdgeRef>, base_edges: Option<Vec<EdgeRef>>, props: Option<k::Props>, errors: Vec<(u32, String)>, millis: f64, bodies: usize },
+    Model {
+        mesh: Tessellation,
+        edges: Vec<EdgeRef>,
+        base_edges: Option<Vec<EdgeRef>>,
+        props: Option<k::Props>,
+        errors: Vec<(u32, String)>,
+        millis: f64,
+        bodies: usize,
+    },
     Hit(Option<k::Hit>),
     Exported(Result<(), String>),
 }
@@ -44,7 +64,13 @@ pub fn read<T: DeserializeOwned>(r: &mut impl Read) -> io::Result<T> {
     let mut byte = [0u8];
     while matched < MAGIC.len() {
         r.read_exact(&mut byte)?;
-        matched = if byte[0] == MAGIC[matched] { matched + 1 } else if byte[0] == MAGIC[0] { 1 } else { 0 };
+        matched = if byte[0] == MAGIC[matched] {
+            matched + 1
+        } else if byte[0] == MAGIC[0] {
+            1
+        } else {
+            0
+        };
     }
     let mut len = [0u8; 8];
     r.read_exact(&mut len)?;
@@ -79,7 +105,9 @@ pub fn serve() {
                 Response::Model { mesh: m.mesh, edges, base_edges, props, errors: m.errors, millis: m.millis, bodies: bodies.len() }
             }
             Request::Ray { origin, dir } => Response::Hit(k::ray(&bodies, origin, dir)),
-            Request::Export { path, step, tolerance } => Response::Exported(if step { k::write_step(&bodies, &path) } else { k::write_stl(&bodies, &path, tolerance) }),
+            Request::Export { path, step, tolerance } => {
+                Response::Exported(if step { k::write_step(&bodies, &path) } else { k::write_stl(&bodies, &path, tolerance) })
+            }
         };
         if write(&mut out, &resp).is_err() {
             return;

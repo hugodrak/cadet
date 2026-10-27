@@ -50,7 +50,14 @@ impl FeatureEdit {
     }
 
     pub fn round(chamfer: bool) -> Self {
-        Self { index: None, kind: Kind::Round { edges: vec![], size: if chamfer { 1.0 } else { 2.0 }, chamfer }, picking_axis: false, changed: true, auto_op: false, drag: None }
+        Self {
+            index: None,
+            kind: Kind::Round { edges: vec![], size: if chamfer { 1.0 } else { 2.0 }, chamfer },
+            picking_axis: false,
+            changed: true,
+            auto_op: false,
+            drag: None,
+        }
     }
 
     pub fn is_round(&self) -> bool {
@@ -114,13 +121,14 @@ impl FeatureEdit {
         }
         if self.picking_axis {
             if let Some((plane, sk)) = sketch_of(doc, &self.kind)
-                && let Some(e) = sketch::hit_line(sk, &View { plane: *plane, ..*view }, pos) {
-                    if let Kind::Revolve { axis, .. } = &mut self.kind {
-                        *axis = Axis::Line(e);
-                    }
-                    self.picking_axis = false;
-                    self.changed = true;
+                && let Some(e) = sketch::hit_line(sk, &View { plane: *plane, ..*view }, pos)
+            {
+                if let Kind::Revolve { axis, .. } = &mut self.kind {
+                    *axis = Axis::Line(e);
                 }
+                self.picking_axis = false;
+                self.changed = true;
+            }
             return;
         }
         let candidates = doc.features.iter().filter_map(|f| match &f.kind {
@@ -289,7 +297,12 @@ impl FeatureEdit {
             Handle::Arc { center, axis, from, degrees } => {
                 let pts = (0..=48).map(|i| s(center + rotate(from - center, axis, (degrees * i as f64 / 48.0).to_radians()))).collect();
                 painter.add(Shape::line(pts, stroke));
-                painter.add(Shape::dashed_line(&[s(center - axis * 1000.0), s(center + axis * 1000.0)], Stroke::new(1.0, p.accent.gamma_multiply(0.5)), 8.0, 5.0));
+                painter.add(Shape::dashed_line(
+                    &[s(center - axis * 1000.0), s(center + axis * 1000.0)],
+                    Stroke::new(1.0, p.accent.gamma_multiply(0.5)),
+                    8.0,
+                    5.0,
+                ));
             }
         }
         painter.circle(tip, if hot { 7.0 } else { 5.5 }, if hot { p.accent } else { p.card }, stroke);
@@ -334,9 +347,10 @@ impl FeatureEdit {
             painter.add(egui::Shape::line(pts, Stroke::new(1.2, p.weak)));
         }
         if let Kind::Revolve { axis: Axis::Line(e), .. } = self.kind
-            && let Some(cs::Entity::Line { a, b }) = sk.entity(e) {
-                painter.add(egui::Shape::dashed_line(&[view.to_screen(sk.pt(a)), view.to_screen(sk.pt(b))], Stroke::new(2.0, p.accent), 8.0, 5.0));
-            }
+            && let Some(cs::Entity::Line { a, b }) = sk.entity(e)
+        {
+            painter.add(egui::Shape::dashed_line(&[view.to_screen(sk.pt(a)), view.to_screen(sk.pt(b))], Stroke::new(2.0, p.accent), 8.0, 5.0));
+        }
     }
 
     pub fn panel(&mut self, ui: &mut egui::Ui, doc: &Document, error: Option<&str>) -> Option<Outcome> {

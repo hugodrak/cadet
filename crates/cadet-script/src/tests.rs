@@ -85,4 +85,3 @@ fn sample_plugins_work() {
     assert!(out.error.is_none(), "{:?}", out.error);
     assert!(matches!(out.requests[0], Request::Export { step: false, .. }) && matches!(out.requests[1], Request::Open { .. }));
 }
-

@@ -108,7 +108,9 @@ pub fn loops(sk: &Sketch) -> Vec<Loop> {
     let mut parent: HashMap<P, P> = HashMap::new();
     fn root(parent: &mut HashMap<P, P>, p: P) -> P {
         let q = *parent.get(&p).unwrap_or(&p);
-        if q == p { p } else {
+        if q == p {
+            p
+        } else {
             let r = root(parent, q);
             parent.insert(p, r);
             r

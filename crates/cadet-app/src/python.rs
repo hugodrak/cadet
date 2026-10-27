@@ -6,10 +6,8 @@ use cadet_script::{Engine, Outcome, Plugin, Value};
 use egui::{Align2, Id, Key, Modifiers, Pos2, RichText, vec2};
 use std::path::PathBuf;
 
-const BUILTIN: &[(&str, &str)] = &[
-    ("gear.py", include_str!("../../../plugins/gear.py")),
-    ("send_to_slicer.py", include_str!("../../../plugins/send_to_slicer.py")),
-];
+const BUILTIN: &[(&str, &str)] =
+    &[("gear.py", include_str!("../../../plugins/gear.py")), ("send_to_slicer.py", include_str!("../../../plugins/send_to_slicer.py"))];
 
 pub fn plugin_dir() -> Option<PathBuf> {
     dirs::config_dir().map(|d| d.join("Cadet").join("plugins"))
@@ -89,26 +87,29 @@ impl Python {
         let i = *i;
         let label = self.engine.plugins().get(i).map(|p| p.label.clone()).unwrap_or_default();
         let (mut run, mut close) = (false, false);
-        egui::Window::new(label).id(Id::unique("plugin_form")).collapsible(false).resizable(false).anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0)).show(ctx, |ui| {
-            egui::Grid::new("plugin_params").num_columns(2).spacing([12.0, 8.0]).show(ui, |ui| {
-                for (name, v) in values.iter_mut() {
-                    ui.label(name.replace('_', " "));
-                    match v {
-                        Value::Number(x) => ui.add(egui::DragValue::new(x).speed(0.1).max_decimals(4)),
-                        Value::Int(x) => ui.add(egui::DragValue::new(x).speed(0.2)),
-                        Value::Bool(b) => ui.checkbox(b, ""),
-                        Value::Text(s) => ui.text_edit_singleline(s),
-                    };
-                    ui.end_row();
-                }
-            });
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                close = ui.button("Cancel").clicked();
-                let p = theme::palette(ui.ctx());
-                run = ui.add(egui::Button::new(RichText::new("  Run  ").color(p.on_accent)).fill(p.accent)).clicked();
-            });
-        });
+        egui::Window::new(label).id(Id::unique("plugin_form")).collapsible(false).resizable(false).anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0)).show(
+            ctx,
+            |ui| {
+                egui::Grid::new("plugin_params").num_columns(2).spacing([12.0, 8.0]).show(ui, |ui| {
+                    for (name, v) in values.iter_mut() {
+                        ui.label(name.replace('_', " "));
+                        match v {
+                            Value::Number(x) => ui.add(egui::DragValue::new(x).speed(0.1).max_decimals(4)),
+                            Value::Int(x) => ui.add(egui::DragValue::new(x).speed(0.2)),
+                            Value::Bool(b) => ui.checkbox(b, ""),
+                            Value::Text(s) => ui.text_edit_singleline(s),
+                        };
+                        ui.end_row();
+                    }
+                });
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    close = ui.button("Cancel").clicked();
+                    let p = theme::palette(ui.ctx());
+                    run = ui.add(egui::Button::new(RichText::new("  Run  ").color(p.on_accent)).fill(p.accent)).clicked();
+                });
+            },
+        );
         if close {
             self.form = None;
         }
@@ -128,7 +129,13 @@ impl Python {
         let focused = ctx.memory(|m| m.has_focus(edit_id));
         let single_line = !self.input.contains('\n');
         let (enter, up, down) = if focused {
-            ctx.input_mut(|i| (!i.modifiers.shift && i.consume_key(Modifiers::NONE, Key::Enter), single_line && i.consume_key(Modifiers::NONE, Key::ArrowUp), single_line && i.consume_key(Modifiers::NONE, Key::ArrowDown)))
+            ctx.input_mut(|i| {
+                (
+                    !i.modifiers.shift && i.consume_key(Modifiers::NONE, Key::Enter),
+                    single_line && i.consume_key(Modifiers::NONE, Key::ArrowUp),
+                    single_line && i.consume_key(Modifiers::NONE, Key::ArrowDown),
+                )
+            })
         } else {
             (false, false, false)
         };
@@ -178,7 +185,12 @@ impl Python {
                     }
                 });
                 ui.separator();
-                let edit = egui::TextEdit::multiline(&mut self.input).id(edit_id).code_editor().desired_rows(1).desired_width(f32::INFINITY).hint_text(">>> cadet.features()");
+                let edit = egui::TextEdit::multiline(&mut self.input)
+                    .id(edit_id)
+                    .code_editor()
+                    .desired_rows(1)
+                    .desired_width(f32::INFINITY)
+                    .hint_text(">>> cadet.features()");
                 let r = ui.add(edit);
                 if std::mem::take(&mut self.focus) {
                     r.request_focus();

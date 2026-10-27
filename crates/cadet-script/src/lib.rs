@@ -5,7 +5,12 @@
 use cadet_core::{Axis, Document, Kind, Op, Plane};
 use cadet_sketch::{Constraint, P, Sketch};
 use glam::{DVec2, DVec3};
-use rustpython_vm::{self as vm, AsObject, Interpreter, PyObject, PyObjectRef, PyResult, VirtualMachine, builtins::{PyBaseExceptionRef, PyStr}, compiler::Mode, scope::Scope};
+use rustpython_vm::{
+    self as vm, AsObject, Interpreter, PyObject, PyObjectRef, PyResult, VirtualMachine,
+    builtins::{PyBaseExceptionRef, PyStr},
+    compiler::Mode,
+    scope::Scope,
+};
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
@@ -204,7 +209,8 @@ fn text(s: &PyStr) -> &str {
 
 /// A Python sequence of sequences of numbers, e.g. [(x, y), ...].
 fn rows(vm: &VirtualMachine, obj: &PyObject, width: usize) -> PyResult<Vec<Vec<f64>>> {
-    let rows = vm.extract_elements_with(obj, |row| vm.extract_elements_with(&row, |x| x.try_into_value::<vm::function::ArgIntoFloat>(vm).map(|f| f.into_float())))?;
+    let rows =
+        vm.extract_elements_with(obj, |row| vm.extract_elements_with(&row, |x| x.try_into_value::<vm::function::ArgIntoFloat>(vm).map(|f| f.into_float())))?;
     match rows.iter().find(|r| r.len() != width) {
         Some(_) => Err(vm.new_value_error(format!("expected points with {width} coordinates"))),
         None => Ok(rows),
@@ -315,10 +321,13 @@ mod cadet {
     #[pyfunction]
     fn line(sk: u32, x1: Num, y1: Num, x2: Num, y2: Num, vm: &VirtualMachine) -> PyResult<usize> {
         let [x1, y1, x2, y2] = [x1, y1, x2, y2].map(Num::into_float);
-        err(vm, edit_sketch(sk, |s| {
-            let (a, b) = (point_at(s, DVec2::new(x1, y1)), point_at(s, DVec2::new(x2, y2)));
-            s.add_line(a, b)
-        }))
+        err(
+            vm,
+            edit_sketch(sk, |s| {
+                let (a, b) = (point_at(s, DVec2::new(x1, y1)), point_at(s, DVec2::new(x2, y2)));
+                s.add_line(a, b)
+            }),
+        )
     }
 
     /// A closed polygon through the given (x, y) points.
@@ -328,10 +337,13 @@ mod cadet {
         if points.len() < 3 {
             return Err(vm.new_value_error("a polygon needs at least 3 points"));
         }
-        let lines: Vec<usize> = err(vm, edit_sketch(sk, |s| {
-            let ps: Vec<P> = points.iter().map(|p| point_at(s, DVec2::new(p[0], p[1]))).collect();
-            (0..ps.len()).map(|i| s.add_line(ps[i], ps[(i + 1) % ps.len()])).collect()
-        }))?;
+        let lines: Vec<usize> = err(
+            vm,
+            edit_sketch(sk, |s| {
+                let ps: Vec<P> = points.iter().map(|p| point_at(s, DVec2::new(p[0], p[1]))).collect();
+                (0..ps.len()).map(|i| s.add_line(ps[i], ps[(i + 1) % ps.len()])).collect()
+            }),
+        )?;
         Ok(list(vm, lines.into_iter().map(|l| vm.ctx.new_int(l).into()).collect()))
     }
 
@@ -339,33 +351,47 @@ mod cadet {
     #[pyfunction]
     fn rect(sk: u32, x: Num, y: Num, w: Num, h: Num, vm: &VirtualMachine) -> PyResult {
         let [x, y, w, h] = [x, y, w, h].map(Num::into_float);
-        let lines: Vec<usize> = err(vm, edit_sketch(sk, |s| {
-            let p = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)].map(|(a, b)| point_at(s, DVec2::new(a, b)));
-            s.constraints.extend([Constraint::Horizontal(p[0], p[1]), Constraint::Vertical(p[1], p[2]), Constraint::Horizontal(p[2], p[3]), Constraint::Vertical(p[3], p[0])]);
-            (0..4).map(|i| s.add_line(p[i], p[(i + 1) % 4])).collect()
-        }))?;
+        let lines: Vec<usize> = err(
+            vm,
+            edit_sketch(sk, |s| {
+                let p = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)].map(|(a, b)| point_at(s, DVec2::new(a, b)));
+                s.constraints.extend([
+                    Constraint::Horizontal(p[0], p[1]),
+                    Constraint::Vertical(p[1], p[2]),
+                    Constraint::Horizontal(p[2], p[3]),
+                    Constraint::Vertical(p[3], p[0]),
+                ]);
+                (0..4).map(|i| s.add_line(p[i], p[(i + 1) % 4])).collect()
+            }),
+        )?;
         Ok(list(vm, lines.into_iter().map(|l| vm.ctx.new_int(l).into()).collect()))
     }
 
     #[pyfunction]
     fn circle(sk: u32, cx: Num, cy: Num, r: Num, vm: &VirtualMachine) -> PyResult<usize> {
         let [cx, cy, r] = [cx, cy, r].map(Num::into_float);
-        err(vm, edit_sketch(sk, |s| {
-            let c = point_at(s, DVec2::new(cx, cy));
-            s.add_circle(c, r)
-        }))
+        err(
+            vm,
+            edit_sketch(sk, |s| {
+                let c = point_at(s, DVec2::new(cx, cy));
+                s.add_circle(c, r)
+            }),
+        )
     }
 
     /// A counter-clockwise arc from `start` to `end` degrees.
     #[pyfunction]
     fn arc(sk: u32, cx: Num, cy: Num, r: Num, start: Num, end: Num, vm: &VirtualMachine) -> PyResult<usize> {
         let [cx, cy, r, start, end] = [cx, cy, r, start, end].map(Num::into_float);
-        err(vm, edit_sketch(sk, |s| {
-            let c = DVec2::new(cx, cy);
-            let at = |deg: f64| c + DVec2::from_angle(deg.to_radians()) * r;
-            let (pc, pa, pb) = (point_at(s, c), point_at(s, at(start)), point_at(s, at(end)));
-            s.add_arc(pc, pa, pb)
-        }))
+        err(
+            vm,
+            edit_sketch(sk, |s| {
+                let c = DVec2::new(cx, cy);
+                let at = |deg: f64| c + DVec2::from_angle(deg.to_radians()) * r;
+                let (pc, pa, pb) = (point_at(s, c), point_at(s, at(start)), point_at(s, at(end)));
+                s.add_arc(pc, pa, pb)
+            }),
+        )
     }
 
     #[derive(FromArgs)]

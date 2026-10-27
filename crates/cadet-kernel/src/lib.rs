@@ -258,19 +258,15 @@ pub struct Hit {
 
 /// The nearest face along a ray. Planar faces also give a sketch frame aligned with world axes where possible.
 pub fn ray(bodies: &[Body], origin: DVec3, dir: DVec3) -> Option<Hit> {
-    bodies
-        .iter()
-        .filter_map(|b| occ::ray(&b.0, &origin.to_array(), &dir.to_array()).ok().filter(|h| h.hit))
-        .min_by(|a, b| a.t.total_cmp(&b.t))
-        .map(|h| {
-            let (p, n) = (DVec3::from_array(h.p), DVec3::from_array(h.n));
-            let plane = h.planar.then(|| {
-                let axes = [DVec3::Z, DVec3::Y, DVec3::X];
-                let u = axes.iter().map(|a| *a - n * a.dot(n)).max_by(|a, b| a.length().total_cmp(&b.length())).unwrap().normalize();
-                Frame { o: n * p.dot(n), u, v: n.cross(u) }
-            });
-            Hit { t: h.t, point: p, plane }
-        })
+    bodies.iter().filter_map(|b| occ::ray(&b.0, &origin.to_array(), &dir.to_array()).ok().filter(|h| h.hit)).min_by(|a, b| a.t.total_cmp(&b.t)).map(|h| {
+        let (p, n) = (DVec3::from_array(h.p), DVec3::from_array(h.n));
+        let plane = h.planar.then(|| {
+            let axes = [DVec3::Z, DVec3::Y, DVec3::X];
+            let u = axes.iter().map(|a| *a - n * a.dot(n)).max_by(|a, b| a.length().total_cmp(&b.length())).unwrap().normalize();
+            Frame { o: n * p.dot(n), u, v: n.cross(u) }
+        });
+        Hit { t: h.t, point: p, plane }
+    })
 }
 
 unsafe extern "C" {
@@ -437,7 +433,13 @@ mod tests {
         let path = dir.join("cadet-accuracy-plate.stl");
         write_stl(&plate, &path, 0.01).unwrap();
         let (lo, hi, vol, n) = read_stl(&path);
-        eprintln!("plate STL: {n} tris, {} bytes, size {:?}, volume {vol:.4} vs exact {:.4} ({:+.4}%)", 84 + n * 50, hi - lo, exact.volume, (vol / exact.volume - 1.0) * 100.0);
+        eprintln!(
+            "plate STL: {n} tris, {} bytes, size {:?}, volume {vol:.4} vs exact {:.4} ({:+.4}%)",
+            84 + n * 50,
+            hi - lo,
+            exact.volume,
+            (vol / exact.volume - 1.0) * 100.0
+        );
         assert!(lo.distance(DVec3::ZERO) < 1e-4 && hi.distance(DVec3::new(40.0, 30.0, 10.0)) < 1e-4, "STL box {lo:?} {hi:?}");
         assert!((vol / exact.volume - 1.0).abs() < 1e-4, "STL volume {vol} vs {}", exact.volume);
 

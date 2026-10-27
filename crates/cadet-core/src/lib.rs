@@ -79,12 +79,31 @@ pub enum Axis {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Kind {
-    Sketch { plane: Plane, sketch: Sketch },
+    Sketch {
+        plane: Plane,
+        sketch: Sketch,
+    },
     /// `probes` are points inside the chosen regions; empty means every outer region.
-    Extrude { sketch: u32, probes: Vec<DVec2>, distance: f64, symmetric: bool, op: Op },
-    Revolve { sketch: u32, probes: Vec<DVec2>, axis: Axis, angle: f64, op: Op },
+    Extrude {
+        sketch: u32,
+        probes: Vec<DVec2>,
+        distance: f64,
+        symmetric: bool,
+        op: Op,
+    },
+    Revolve {
+        sketch: u32,
+        probes: Vec<DVec2>,
+        axis: Axis,
+        angle: f64,
+        op: Op,
+    },
     /// Fillet (or chamfer) of the edges passing through `edges`.
-    Round { edges: Vec<DVec3>, size: f64, chamfer: bool },
+    Round {
+        edges: Vec<DVec3>,
+        size: f64,
+        chamfer: bool,
+    },
 }
 
 impl Kind {

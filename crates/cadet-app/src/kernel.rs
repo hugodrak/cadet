@@ -1,8 +1,8 @@
 //! Talks to the kernel worker process (`cadet --kernel`), restarting it if it crashes.
 
+use cadet_core::Document;
 use cadet_core::kernel::{EdgeRef, Hit, Tessellation};
 use cadet_core::worker::{Request, Response, read, write};
-use cadet_core::Document;
 use glam::DVec3;
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -57,13 +57,7 @@ fn spawn(ctx: &egui::Context) -> Worker {
     let mut cmd = Command::new(exe);
     #[cfg(windows)]
     std::os::windows::process::CommandExt::creation_flags(&mut cmd, 0x0800_0000);
-    let mut child = cmd
-        .arg("--kernel")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .expect("start kernel worker");
+    let mut child = cmd.arg("--kernel").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::inherit()).spawn().expect("start kernel worker");
     let stdin = child.stdin.take().unwrap();
     let mut stdout = std::io::BufReader::new(child.stdout.take().unwrap());
     let (tx, rx) = channel();

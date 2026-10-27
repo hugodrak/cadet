@@ -21,7 +21,12 @@ impl Measure {
         let nearest = |it: Vec<(DVec3, Marker, Option<usize>)>, r: f32| {
             it.into_iter().map(|c| (s(c.0).distance(pos), c)).filter(|x| x.0 < r).min_by(|a, b| a.0.total_cmp(&b.0)).map(|x| x.1)
         };
-        let vertices = edges.iter().enumerate().filter(|(_, e)| !e.closed()).flat_map(|(i, e)| [(e.points[0], Marker::Point, Some(i)), (*e.points.last().unwrap(), Marker::Point, Some(i))]).collect();
+        let vertices = edges
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| !e.closed())
+            .flat_map(|(i, e)| [(e.points[0], Marker::Point, Some(i)), (*e.points.last().unwrap(), Marker::Point, Some(i))])
+            .collect();
         let centers = edges.iter().enumerate().filter_map(|(i, e)| e.circle.map(|(c, _)| (c, Marker::Center, Some(i)))).collect();
         let near_edge = |e: &EdgeRef| e.points.windows(2).map(|w| seg_dist(pos, s(w[0]), s(w[1]))).fold(f32::MAX, f32::min) < 16.0;
         let divisions = edges

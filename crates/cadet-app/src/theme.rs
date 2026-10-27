@@ -136,7 +136,9 @@ fn visuals(p: &Palette, mut v: Visuals) -> Visuals {
     v.selection.stroke = Stroke::new(1.0, p.accent);
     v.hyperlink_color = p.accent;
     let w = &mut v.widgets;
-    for (s, fill) in [(&mut w.noninteractive, p.card), (&mut w.inactive, Color32::TRANSPARENT), (&mut w.hovered, p.hover), (&mut w.active, p.line), (&mut w.open, p.hover)] {
+    for (s, fill) in
+        [(&mut w.noninteractive, p.card), (&mut w.inactive, Color32::TRANSPARENT), (&mut w.hovered, p.hover), (&mut w.active, p.line), (&mut w.open, p.hover)]
+    {
         s.bg_fill = fill;
         s.weak_bg_fill = fill;
         s.corner_radius = r;

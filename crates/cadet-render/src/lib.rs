@@ -79,11 +79,7 @@ impl Viewport {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
+                ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None },
                 count: None,
             }],
         });
@@ -92,22 +88,13 @@ impl Viewport {
             layout: &layout,
             entries: &[wgpu::BindGroupEntry { binding: 0, resource: globals.as_entire_binding() }],
         });
-        let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[Some(&layout)],
-            immediate_size: 0,
-        });
+        let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: None, bind_group_layouts: &[Some(&layout)], immediate_size: 0 });
 
         let pipeline = |vs: &str, fs: &str, buffers: &[Option<wgpu::VertexBufferLayout>], topology, depth_write, blend| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(vs),
                 layout: Some(&pl),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some(vs),
-                    compilation_options: Default::default(),
-                    buffers,
-                },
+                vertex: wgpu::VertexState { module: &shader, entry_point: Some(vs), compilation_options: Default::default(), buffers },
                 primitive: wgpu::PrimitiveState { topology, ..Default::default() },
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: DEPTH_FORMAT,
@@ -121,11 +108,7 @@ impl Viewport {
                     module: &shader,
                     entry_point: Some(fs),
                     compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: COLOR_FORMAT,
-                        blend,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
+                    targets: &[Some(wgpu::ColorTargetState { format: COLOR_FORMAT, blend, write_mask: wgpu::ColorWrites::ALL })],
                 }),
                 multiview_mask: None,
                 cache: None,
@@ -139,11 +122,8 @@ impl Viewport {
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3],
         };
-        let edge_layout = wgpu::VertexBufferLayout {
-            array_stride: 12,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &wgpu::vertex_attr_array![0 => Float32x3],
-        };
+        let edge_layout =
+            wgpu::VertexBufferLayout { array_stride: 12, step_mode: wgpu::VertexStepMode::Vertex, attributes: &wgpu::vertex_attr_array![0 => Float32x3] };
 
         Self {
             bg: pipeline("vs_bg", "fs_bg", &[], TriangleList, false, None),
@@ -162,9 +142,7 @@ impl Viewport {
             self.mesh = None;
             return;
         }
-        let buf = |contents: &[u8], usage| {
-            device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: None, contents, usage })
-        };
+        let buf = |contents: &[u8], usage| device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: None, contents, usage });
         self.mesh = Some(GpuMesh {
             vertices: buf(bytemuck::cast_slice(&mesh.vertices), wgpu::BufferUsages::VERTEX),
             indices: buf(bytemuck::cast_slice(&mesh.indices), wgpu::BufferUsages::INDEX),
@@ -175,14 +153,7 @@ impl Viewport {
     }
 
     /// Renders into an offscreen texture. Returns the view and whether it was recreated.
-    pub fn render(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        size: [u32; 2],
-        camera: &Camera,
-        style: &Style,
-    ) -> (&wgpu::TextureView, bool) {
+    pub fn render(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, size: [u32; 2], camera: &Camera, style: &Style) -> (&wgpu::TextureView, bool) {
         let size = [size[0].max(1), size[1].max(1)];
         let recreated = self.targets.as_ref().is_none_or(|t| t.size != size);
         if recreated {
@@ -210,17 +181,11 @@ impl Viewport {
                     view: &t.msaa,
                     depth_slice: None,
                     resolve_target: Some(&t.resolve),
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Discard,
-                    },
+                    ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Discard },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &t.depth,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Discard,
-                    }),
+                    depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Discard }),
                     stencil_ops: None,
                 }),
                 timestamp_writes: None,

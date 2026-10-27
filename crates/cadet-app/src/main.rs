@@ -7,11 +7,11 @@ mod features;
 mod files;
 mod icons;
 mod kernel;
+#[cfg(target_os = "macos")]
+mod macos;
 mod measure;
 mod python;
 mod settings;
-#[cfg(target_os = "macos")]
-mod macos;
 mod sketch;
 mod snap;
 mod theme;
