@@ -101,7 +101,7 @@ impl FeatureEdit {
     fn probes(&mut self) -> &mut Vec<DVec2> {
         match &mut self.kind {
             Kind::Extrude { probes, .. } | Kind::Revolve { probes, .. } => probes,
-            Kind::Sketch { .. } | Kind::Round { .. } => unreachable!(),
+            Kind::Sketch { .. } | Kind::Round { .. } | Kind::Import { .. } => unreachable!(),
         }
     }
 
@@ -146,7 +146,7 @@ impl FeatureEdit {
                         *sketch = id;
                         *probes = vec![q];
                     }
-                    Kind::Sketch { .. } | Kind::Round { .. } => {}
+                    Kind::Sketch { .. } | Kind::Round { .. } | Kind::Import { .. } => {}
                 }
             } else {
                 let all: Vec<DVec2> = chosen_regions(&loops, &regions, &[]).into_iter().filter_map(|r| interior(&loops, r)).collect();
@@ -189,7 +189,7 @@ impl FeatureEdit {
                 let dir = (out - tangent * out.dot(tangent)).normalize_or(DVec3::Z);
                 Some(Handle::Line { base: e.probe, dir, len: *size, scale: 4.0 })
             }
-            Kind::Sketch { .. } => None,
+            Kind::Sketch { .. } | Kind::Import { .. } => None,
         }
     }
 
@@ -271,7 +271,7 @@ impl FeatureEdit {
                         self.changed = true;
                     }
                 }
-                Kind::Sketch { .. } => {}
+                Kind::Sketch { .. } | Kind::Import { .. } => {}
             }
         }
         if !resp.dragged() {
@@ -310,7 +310,7 @@ impl FeatureEdit {
             Kind::Extrude { distance, op, .. } => format!("{} mm{}", sketch::fmt_len(*distance), if *op == Op::Cut { " · cut" } else { "" }),
             Kind::Revolve { angle, .. } => format!("{}°", sketch::fmt_len(*angle)),
             Kind::Round { size, chamfer, .. } => format!("{} {} mm", if *chamfer { "Distance" } else { "R" }, sketch::fmt_len(*size)),
-            Kind::Sketch { .. } => String::new(),
+            Kind::Sketch { .. } | Kind::Import { .. } => String::new(),
         };
         painter.text(tip + egui::vec2(14.0, -14.0), Align2::LEFT_BOTTOM, label, FontId::proportional(13.0), p.text);
     }
@@ -335,7 +335,7 @@ impl FeatureEdit {
         let regions = cs::regions(&loops);
         let probes = match &self.kind {
             Kind::Extrude { probes, .. } | Kind::Revolve { probes, .. } => probes.as_slice(),
-            Kind::Sketch { .. } | Kind::Round { .. } => &[],
+            Kind::Sketch { .. } | Kind::Round { .. } | Kind::Import { .. } => &[],
         };
         let chosen = chosen_regions(&loops, &regions, probes);
         for r in &regions {
@@ -426,7 +426,7 @@ impl FeatureEdit {
                 ui.end_row();
                 picked_op |= op_row(ui, op);
             }
-            Kind::Sketch { .. } | Kind::Round { .. } => {}
+            Kind::Sketch { .. } | Kind::Round { .. } | Kind::Import { .. } => {}
         });
         self.picking_axis = picking;
         if picked_op {

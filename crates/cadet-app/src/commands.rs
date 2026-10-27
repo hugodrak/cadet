@@ -42,6 +42,7 @@ pub enum Action {
     Save,
     SaveAs,
     ExportStep,
+    Import,
     Quit,
     Shortcuts,
     Console,
@@ -93,6 +94,7 @@ pub const COMMANDS: &[Command] = &[
     cmd("inspect.measure", "Measure", icons::RULER, k(Key::I), Action::Measure, Model),
     cmd("file.export", "Export STL…", icons::EXPORT, cmd_key(Key::E), Action::Export, Any),
     cmd("file.export_step", "Export STEP…", icons::EXPORT, Some((CMD_SHIFT, Key::E)), Action::ExportStep, Any),
+    cmd("file.import", "Import STEP/IGES…", icons::IMPORT, Some((CMD_SHIFT, Key::I)), Action::Import, Any),
     cmd("app.quit", "Quit", icons::EXPORT, cmd_key(Key::Q), Action::Quit, Any),
     cmd("python.console", "Python console", icons::TERMINAL, cmd_key(Key::J), Action::Console, Any),
     cmd("python.plugins_folder", "Open plugins folder", icons::PLUGIN, None, Action::OpenPlugins, Any),
@@ -137,7 +139,7 @@ pub const COMMANDS: &[Command] = &[
 pub const MENUS: &[(&str, &[&[Action]])] = {
     use Action::*;
     &[
-        ("File", &[&[New, Open], &[Save, SaveAs], &[Export, ExportStep], &[Quit]]),
+        ("File", &[&[New, Open], &[Save, SaveAs], &[Import], &[Export, ExportStep], &[Quit]]),
         ("Edit", &[&[Undo, Redo], &[Delete], &[Palette], &[Settings]]),
         ("View", &[&[Home, Front, Right, Top], &[ToggleGrid, ToggleEdges, ToggleTheme]]),
         (

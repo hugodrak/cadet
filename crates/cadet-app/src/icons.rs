@@ -6,6 +6,7 @@ pub const FILLET: &str = "\u{eb00}";
 pub const CHAMFER: &str = "\u{e6d0}";
 pub const RULER: &str = "\u{e6b8}";
 pub const EXPORT: &str = "\u{eaf0}";
+pub const IMPORT: &str = "\u{e20c}";
 pub const NEW: &str = "\u{e236}";
 pub const OPEN: &str = "\u{e256}";
 pub const SAVE: &str = "\u{e248}";

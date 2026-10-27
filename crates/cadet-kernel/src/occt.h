@@ -29,5 +29,10 @@ Props props(const TopoDS_Shape &s);
 RayHit ray(const TopoDS_Shape &s, rust::Slice<const double> origin, rust::Slice<const double> dir);
 void write_stl(const TopoDS_Shape &s, rust::Str path, double tol);
 void write_step(const TopoDS_Shape &s, rust::Str path);
+Shape read_cad(rust::Str path, bool iges);
+rust::String to_brep(const TopoDS_Shape &s);
+Shape from_brep(rust::Str text);
+size_t solid_count(const TopoDS_Shape &s);
+Shape solid(const TopoDS_Shape &s, size_t i);
 
 } // namespace cadet

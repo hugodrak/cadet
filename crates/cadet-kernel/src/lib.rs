@@ -299,6 +299,31 @@ pub fn write_step(bodies: &[Body], path: &Path) -> Result<()> {
     occ::write_step(&*compound(bodies)?, &path.to_string_lossy()).map_err(err)
 }
 
+/// Reads a STEP or IGES file (by extension) into OCCT's BREP text format, healing small defects.
+pub fn import(path: &Path) -> Result<String> {
+    let ext = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+    let iges = match ext.as_str() {
+        "step" | "stp" => false,
+        "iges" | "igs" => true,
+        _ => return Err(format!("Can't import .{ext} files; use STEP or IGES")),
+    };
+    occ::to_brep(&*occ::read_cad(&path.to_string_lossy(), iges).map_err(err)?).map_err(err)
+}
+
+/// The bodies as BREP text, the format `from_brep` reads.
+pub fn to_brep(bodies: &[Body]) -> Result<String> {
+    occ::to_brep(&*compound(bodies)?).map_err(err)
+}
+
+/// Bodies from BREP text: one per solid, or the whole shape if it has no solids (e.g. surfaces).
+pub fn from_brep(text: &str) -> Result<Vec<Body>> {
+    let s = occ::from_brep(text).map_err(err)?;
+    match occ::solid_count(&s) {
+        0 => Ok(vec![Body(s)]),
+        n => (0..n).map(|i| occ::solid(&s, i).map(Body).map_err(err)).collect(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -375,15 +400,20 @@ mod tests {
         assert!(tessellate(&bodies, 0.1).indices.len() > 100);
     }
 
-    /// STEP export runs in a child process that leaves via `exit_now`, like the kernel worker does.
+    /// STEP export and re-import (two solids, same volume and size) run in a child process that leaves via `exit_now`, like the kernel worker does.
     #[test]
     fn step_export() {
         let path = std::env::temp_dir().join("cadet-test.step");
         if std::env::var_os("CADET_STEP_CHILD").is_some() {
             let (l, r) = plate_with_hole();
             let f = faces(&XY, &l, &r.iter().collect::<Vec<_>>()).unwrap();
-            let ok = write_step(&[extrude(&f, DVec3::Z * 10.0, false).unwrap()], &path).is_ok();
-            exit_now(if ok { 0 } else { 1 });
+            let part = [extrude(&f, DVec3::Z * 10.0, false).unwrap(), extrude(&f, DVec3::Z * -4.0, false).unwrap()];
+            write_step(&part, &path).unwrap();
+            let back = from_brep(&import(&path).unwrap()).unwrap();
+            let (a, b) = (props(&part).unwrap(), props(&back).unwrap());
+            let same = back.len() == 2 && (a.volume - b.volume).abs() < 1e-6 * a.volume && a.min.distance(b.min) < 1e-6 && a.max.distance(b.max) < 1e-6;
+            let refused = import(&path.with_extension("obj")).is_err_and(|e| e.contains("STEP or IGES"));
+            exit_now(if same && refused { 0 } else { 1 });
         }
         let _ = std::fs::remove_file(&path);
         let status = std::process::Command::new(std::env::current_exe().unwrap())

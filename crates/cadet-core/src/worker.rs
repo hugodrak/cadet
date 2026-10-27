@@ -31,6 +31,8 @@ pub enum Request {
         step: bool,
         tolerance: f64,
     },
+    /// Read a STEP/IGES file into BREP text for an Import feature.
+    Import(PathBuf),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -48,6 +50,7 @@ pub enum Response {
     },
     Hit(Option<k::Hit>),
     Exported(Result<(), String>),
+    Imported(Result<String, String>),
 }
 
 pub fn write<T: Serialize>(w: &mut impl Write, msg: &T) -> io::Result<()> {
@@ -108,6 +111,7 @@ pub fn serve() {
             Request::Export { path, step, tolerance } => {
                 Response::Exported(if step { k::write_step(&bodies, &path) } else { k::write_stl(&bodies, &path, tolerance) })
             }
+            Request::Import(path) => Response::Imported(k::import(&path)),
         };
         if write(&mut out, &resp).is_err() {
             return;

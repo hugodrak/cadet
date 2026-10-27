@@ -24,12 +24,16 @@
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRepPrimAPI_MakePrism.hxx>
 #include <BRepPrimAPI_MakeRevol.hxx>
+#include <BRepTools.hxx>
 #include <BRep_Builder.hxx>
 #include <BRep_Tool.hxx>
 #include <GC_MakeArcOfCircle.hxx>
 #include <GCPnts_TangentialDeflection.hxx>
 #include <IFSelect_ReturnStatus.hxx>
+#include <IGESControl_Reader.hxx>
+#include <STEPControl_Reader.hxx>
 #include <STEPControl_Writer.hxx>
+#include <ShapeFix_Shape.hxx>
 #include <ShapeUpgrade_UnifySameDomain.hxx>
 #include <Standard_Failure.hxx>
 #include <StlAPI_Writer.hxx>
@@ -42,6 +46,7 @@
 #include <gp_Lin.hxx>
 #include <gp_Pln.hxx>
 
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -298,6 +303,63 @@ void write_step(const TopoDS_Shape &s, rust::Str path) {
     STEPControl_Writer w;
     if (w.Transfer(s, STEPControl_AsIs) != IFSelect_RetDone) throw std::runtime_error("couldn't convert the model");
     if (w.Write(std::string(path).c_str()) != IFSelect_RetDone) throw std::runtime_error("couldn't write the file");
+  });
+}
+
+template <class R> static TopoDS_Shape read_with(R &r, const std::string &path) {
+  if (r.ReadFile(path.c_str()) != IFSelect_RetDone) throw std::runtime_error("couldn't read the file");
+  if (r.TransferRoots() == 0) throw std::runtime_error("the file has no shapes");
+  return r.OneShape();
+}
+
+Shape read_cad(rust::Str path, bool iges) {
+  return guard("Import", [&] {
+    std::string p(path);
+    TopoDS_Shape s;
+    if (iges) {
+      IGESControl_Reader r;
+      s = read_with(r, p);
+    } else {
+      STEPControl_Reader r;
+      s = read_with(r, p);
+    }
+    if (s.IsNull()) throw std::runtime_error("the file has no shapes");
+    ShapeFix_Shape fix(s);
+    fix.Perform();
+    return own(fix.Shape());
+  });
+}
+
+rust::String to_brep(const TopoDS_Shape &s) {
+  return guard("BREP write", [&] {
+    std::ostringstream o;
+    BRepTools::Write(s, o, false, false, TopTools_FormatVersion_CURRENT);
+    return rust::String(o.str());
+  });
+}
+
+Shape from_brep(rust::Str text) {
+  return guard("BREP read", [&] {
+    std::istringstream i{std::string(text)};
+    TopoDS_Shape s;
+    BRep_Builder b;
+    BRepTools::Read(s, i, b);
+    if (s.IsNull()) throw std::runtime_error("the stored geometry is empty or damaged");
+    return own(s);
+  });
+}
+
+size_t solid_count(const TopoDS_Shape &s) {
+  TopTools_IndexedMapOfShape m;
+  TopExp::MapShapes(s, TopAbs_SOLID, m);
+  return m.Extent();
+}
+
+Shape solid(const TopoDS_Shape &s, size_t i) {
+  return guard("solid", [&] {
+    TopTools_IndexedMapOfShape m;
+    TopExp::MapShapes(s, TopAbs_SOLID, m);
+    return own(m(int(i) + 1));
   });
 }
 
