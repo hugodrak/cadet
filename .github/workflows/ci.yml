@@ -3,7 +3,9 @@ name: ci
 on:
   push:
     branches: [main]
+  # Drafts don't run CI; marking a PR ready (or pushing to a ready PR) does.
   pull_request:
+    types: [synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -19,6 +21,7 @@ env:
 
 jobs:
   fmt:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +31,7 @@ jobs:
       - run: cargo fmt --all --check
 
   test:
+    if: ${{ !github.event.pull_request.draft }}
     name: test (${{ matrix.os }})
     strategy:
       fail-fast: false

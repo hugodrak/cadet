@@ -1,0 +1,23 @@
+name: draft
+
+# New PRs start as drafts; CI runs once they're marked "Ready for review".
+# pull_request_target can write to PRs from forks. It never checks out PR code, so it's safe.
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  draft:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr ready --undo "$PR" -R "$REPO"
+          gh pr comment "$PR" -R "$REPO" --body "Thanks! This PR starts as a draft. Press **Ready for review** when it's done, and CI will run."
