@@ -1,0 +1,8 @@
+/target
+/dist
+.DS_Store
+
+# Working notes and dev scripts
+/docs/
+/scripts/
+.claude/

@@ -1,0 +1,42 @@
+[package]
+name = "cadet-app"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+cadet-core = { version = "0.1.0", path = "../cadet-core" }
+cadet-render = { version = "0.1.0", path = "../cadet-render" }
+cadet-script = { version = "0.1.0", path = "../cadet-script" }
+cadet-sketch = { version = "0.1.0", path = "../cadet-sketch" }
+dirs = "7.0.0"
+eframe = { version = "0.37.0", default-features = false, features = ["wgpu", "default_fonts", "accesskit", "wayland", "x11"] }
+egui = "0.37"
+glam = "0.34"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+rfd = "0.17.2"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+winit = "0.30"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString"] }
+
+[[bin]]
+name = "cadet"
+path = "src/main.rs"
+
+[package.metadata.packager]
+productName = "Cadet"
+identifier = "org.cadet.app"
+description = "Fast, local-first parametric CAD for makers"
+category = "GraphicsAndDesign"
+icons = ["../../assets/icons/*.png"]
+outDir = "../../dist"
+beforePackagingCommand = "cargo build --release -p cadet-app"
+binaries = [{ path = "cadet", main = true }]
+fileAssociations = [{ extensions = ["cadet"], description = "Cadet design", name = "Cadet design" }]
+
+[package.metadata.packager.macos]
+minimumSystemVersion = "11.0"

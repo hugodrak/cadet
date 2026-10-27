@@ -1,0 +1,12 @@
+[package]
+name = "cadet-script"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+cadet-core = { version = "0.1.0", path = "../cadet-core" }
+cadet-sketch = { version = "0.1.0", path = "../cadet-sketch" }
+glam = "0.34"
+rustpython-stdlib = "0.6"
+rustpython-vm = { version = "0.6", features = ["compiler"] }

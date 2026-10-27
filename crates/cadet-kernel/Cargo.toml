@@ -1,0 +1,15 @@
+[package]
+name = "cadet-kernel"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+cxx = "1.0"
+cadet-sketch = { version = "0.1.0", path = "../cadet-sketch" }
+glam = { version = "0.34", features = ["serde"] }
+serde = { version = "1.0.229", features = ["derive"] }
+
+[build-dependencies]
+cxx-build = "1.0"
+occt-sys = "7.8.1"

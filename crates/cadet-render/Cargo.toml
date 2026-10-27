@@ -1,0 +1,10 @@
+[package]
+name = "cadet-render"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+bytemuck = { version = "1.25.2", features = ["derive"] }
+glam = "0.34.1"
+wgpu = "30.0.1"

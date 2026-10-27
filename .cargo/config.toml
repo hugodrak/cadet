@@ -1,0 +1,3 @@
+[env]
+# CMake 4 rejects OCCT's old cmake_minimum_required; this keeps the static OCCT build working.
+CMAKE_POLICY_VERSION_MINIMUM = "3.5"

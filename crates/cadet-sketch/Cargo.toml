@@ -1,0 +1,9 @@
+[package]
+name = "cadet-sketch"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+glam = { version = "0.34", features = ["serde"] }
+serde = { version = "1.0.229", features = ["derive"] }
