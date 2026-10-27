@@ -5,6 +5,7 @@ use cadet_sketch::{self as cs, E, Entity, Sketch};
 use glam::{DVec2, DVec3};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::sync::Arc;
 
 pub use cadet_kernel::{self as kernel, Op};
 
@@ -77,6 +78,20 @@ pub enum Axis {
     Line(E),
 }
 
+/// Exact geometry in OCCT's BREP text format. Shared, so undo snapshots don't copy it.
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Brep(pub Arc<str>);
+
+impl std::fmt::Debug for Brep {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        self.0.hash(&mut h);
+        write!(f, "Brep({} bytes, {:016x})", self.0.len(), h.finish())
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Kind {
     Sketch {
@@ -104,6 +119,11 @@ pub enum Kind {
         size: f64,
         chamfer: bool,
     },
+    /// Solids read from a STEP/IGES file, stored in the document. `file` is the original file name.
+    Import {
+        file: String,
+        brep: Brep,
+    },
 }
 
 impl Kind {
@@ -114,13 +134,14 @@ impl Kind {
             Kind::Revolve { .. } => "Revolve",
             Kind::Round { chamfer: false, .. } => "Fillet",
             Kind::Round { chamfer: true, .. } => "Chamfer",
+            Kind::Import { .. } => "Import",
         }
     }
 
     pub fn sketch_ref(&self) -> Option<u32> {
         match self {
             Kind::Extrude { sketch, .. } | Kind::Revolve { sketch, .. } => Some(*sketch),
-            Kind::Sketch { .. } | Kind::Round { .. } => None,
+            Kind::Sketch { .. } | Kind::Round { .. } | Kind::Import { .. } => None,
         }
     }
 
@@ -241,6 +262,10 @@ fn apply(doc: &Document, i: usize, f: &Feature, bodies: &mut Vec<Body>) -> Resul
             }
             return k::round(bodies, edges, *size, *chamfer);
         }
+        Kind::Import { brep, .. } => {
+            bodies.extend(k::from_brep(&brep.0)?);
+            return Ok(());
+        }
         Kind::Extrude { sketch, probes, op, .. } | Kind::Revolve { sketch, probes, op, .. } => (*sketch, probes, *op),
     };
     let (plane, sk) = doc.sketch(sketch_id).filter(|_| doc.index_of(sketch_id) < Some(i)).ok_or("Its sketch is missing")?;
@@ -265,7 +290,7 @@ fn apply(doc: &Document, i: usize, f: &Feature, bodies: &mut Vec<Body>) -> Resul
             };
             k::revolve(&faces, o, d.normalize(), angle)
         }
-        Kind::Sketch { .. } | Kind::Round { .. } => unreachable!(),
+        Kind::Sketch { .. } | Kind::Round { .. } | Kind::Import { .. } => unreachable!(),
     }?;
     k::combine(bodies, tool, op)
 }
@@ -301,5 +326,36 @@ mod tests {
 
         let mut doc = back;
         assert_eq!(doc.remove(0), 3);
+    }
+
+    #[test]
+    fn imported_bodies_save_and_stay_editable() {
+        let mut src = Document::default();
+        let mut sk = Sketch::new();
+        let p = [(0.0, 0.0), (30.0, 0.0), (30.0, 20.0), (0.0, 20.0)].map(|(x, y)| sk.add_point(DVec2::new(x, y)));
+        for i in 0..4 {
+            sk.add_line(p[i], p[(i + 1) % 4]);
+        }
+        let s = src.add(Kind::Sketch { plane: Plane::XY, sketch: sk });
+        let sid = src.features[s].id;
+        src.add(Kind::Extrude { sketch: sid, probes: vec![], distance: 10.0, symmetric: false, op: Op::New });
+        let original = evaluate(&src, 2);
+        let brep = k::to_brep(&original.bodies).unwrap();
+
+        let mut doc = Document::default();
+        doc.add(Kind::Import { file: "plate.step".into(), brep: Brep(brep.into()) });
+        doc.add(Kind::Round { edges: vec![DVec3::new(30.0, 10.0, 10.0)], size: 2.0, chamfer: false });
+        let path = std::env::temp_dir().join("cadet-import.cadet");
+        doc.save(&path).unwrap();
+        let back = Document::load(&path).unwrap();
+        assert!(back.features[0].kind.fingerprint().starts_with("Import { file: \"plate.step\", brep: Brep("));
+
+        let imported = evaluate(&back, 1);
+        let filleted = evaluate(&back, 2);
+        assert!(filleted.errors.is_empty(), "{:?}", filleted.errors);
+        let (a, b, c) = (k::props(&original.bodies).unwrap(), k::props(&imported.bodies).unwrap(), k::props(&filleted.bodies).unwrap());
+        assert!((a.volume - b.volume).abs() < 1e-9 && a.max.distance(b.max) < 1e-9, "{a:?} vs {b:?}");
+        let fillet_loss = 4.0 * (1.0 - std::f64::consts::FRAC_PI_4) * 20.0;
+        assert!((b.volume - c.volume - fillet_loss).abs() < 1e-6, "{}", b.volume - c.volume);
     }
 }

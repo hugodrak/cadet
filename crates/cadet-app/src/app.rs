@@ -121,8 +121,10 @@ impl App {
         app.divisions = app.settings.divisions;
         #[cfg(target_os = "macos")]
         crate::macos::set_context(&cc.egui_ctx);
-        let arg = std::env::args().skip(1).map(PathBuf::from).find(|p| p.extension().is_some_and(|e| e == "cadet"));
-        if let Some(doc) = arg.as_ref().and_then(|p| Document::load(p).ok()) {
+        let arg = std::env::args().skip(1).map(PathBuf::from).find(|p| p.extension().is_some_and(|e| e == "cadet") || files::is_cad_file(p));
+        if let Some(cad) = arg.clone().filter(|p| files::is_cad_file(p)) {
+            app.kernel.import(cad);
+        } else if let Some(doc) = arg.as_ref().and_then(|p| Document::load(p).ok()) {
             (app.doc, app.path) = (doc, arg);
             app.rebuild();
         } else if let Some((doc, path, dirty)) = (persist && app.settings.restore_session).then(files::restore).flatten() {
@@ -178,6 +180,16 @@ impl App {
                     None => self.notify(ctx, "Exported".into()),
                 },
                 Event::Exported(Err(e)) => self.notify(ctx, format!("Export failed: {e}")),
+                Event::Imported(file, Ok(brep)) => {
+                    self.finish_mode();
+                    self.checkpoint();
+                    let name = std::path::Path::new(&file).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or(file.clone());
+                    let i = self.doc.add(Kind::Import { file, brep: cadet_core::Brep(brep.into()) });
+                    self.doc.features[i].name = name;
+                    self.after_model.push(Action::Home);
+                    self.changed();
+                }
+                Event::Imported(file, Err(e)) => self.notify(ctx, format!("Couldn't import {file}: {e}")),
                 Event::Crashed(msg) => self.notify(ctx, msg),
             }
         }
@@ -228,6 +240,7 @@ impl App {
                 self.checkpoint();
                 self.mode = Mode::Sketch(Box::new(ed));
             }
+            Kind::Import { .. } => {}
             _ => self.mode = Mode::Feature(Box::new(FeatureEdit::edit(&self.doc, i))),
         }
         self.rebuild();
@@ -336,6 +349,11 @@ impl App {
                     self.open(ctx, path);
                 }
             }
+            Action::Import => {
+                if let Some(path) = files::pick_import() {
+                    self.import(ctx, path);
+                }
+            }
             Action::Save | Action::SaveAs => self.save(ctx, action == Action::SaveAs),
             Action::Undo | Action::Redo if !matches!(self.mode, Mode::Sketch(_)) => {
                 let (from, to) = if action == Action::Undo { (&mut self.history, &mut self.future) } else { (&mut self.future, &mut self.history) };
@@ -374,7 +392,15 @@ impl App {
         self.path.as_deref().and_then(|p| Document::load(p).ok()).unwrap_or_default()
     }
 
+    fn import(&mut self, ctx: &egui::Context, path: PathBuf) {
+        self.notify(ctx, format!("Importing {}…", path.file_name().unwrap_or_default().to_string_lossy()));
+        self.kernel.import(path);
+    }
+
     fn open(&mut self, ctx: &egui::Context, path: PathBuf) {
+        if files::is_cad_file(&path) {
+            return self.import(ctx, path);
+        }
         if !self.settle_unsaved(ctx) {
             return;
         }
@@ -818,6 +844,7 @@ impl App {
             Kind::Revolve { .. } => icons::REVOLVE,
             Kind::Round { chamfer: false, .. } => icons::FILLET,
             Kind::Round { chamfer: true, .. } => icons::CHAMFER,
+            Kind::Import { .. } => icons::IMPORT,
         }
     }
 
@@ -1081,6 +1108,9 @@ impl eframe::App for App {
         self.kernel_events(&ctx);
         #[cfg(target_os = "macos")]
         for path in crate::macos::take_opened() {
+            self.open(&ctx, path);
+        }
+        for path in ctx.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).filter(|p| !p.as_os_str().is_empty()).collect::<Vec<_>>()) {
             self.open(&ctx, path);
         }
         let in_sketch = matches!(self.mode, Mode::Sketch(_));

@@ -49,8 +49,19 @@ pub fn restored_ok() {
     }
 }
 
+pub const CAD_FILES: &[&str] = &["step", "stp", "iges", "igs"];
+
+/// STEP/IGES files are imported into the current design rather than opened.
+pub fn is_cad_file(path: &Path) -> bool {
+    path.extension().is_some_and(|e| CAD_FILES.contains(&e.to_string_lossy().to_lowercase().as_str()))
+}
+
 pub fn pick_open() -> Option<PathBuf> {
-    rfd::FileDialog::new().add_filter("Cadet design", &["cadet"]).pick_file()
+    rfd::FileDialog::new().add_filter("Cadet design", &["cadet"]).add_filter("STEP / IGES (import)", CAD_FILES).pick_file()
+}
+
+pub fn pick_import() -> Option<PathBuf> {
+    rfd::FileDialog::new().add_filter("STEP / IGES", CAD_FILES).pick_file()
 }
 
 pub fn pick_save(current: Option<&Path>) -> Option<PathBuf> {

@@ -1,6 +1,7 @@
 /// OCCT toolkits we link, dependents first.
 const LIBS: &[&str] = &[
     "TKDESTEP",
+    "TKDEIGES",
     "TKDESTL",
     "TKXSBase",
     "TKDE",

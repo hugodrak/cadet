@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>Fast, free, local-first parametric CAD for makers.</b><br>
-  Sketch → constrain → extrude, revolve, fillet → export STL/STEP to your 3D printer.
+  Sketch → constrain → extrude, revolve, fillet → export STL/STEP to your 3D printer. Imports STEP/IGES from other CAD tools.
 </p>
 
 <p align="center">
@@ -38,6 +38,7 @@
 - **Sketch on any flat face** of the model
 - **Editable timeline:** double-click any feature to change it, and the model rebuilds
 - **Measure** distances, ΔXYZ, exact edge lengths and diameters, model size, volume and surface area
+- **Import STEP and IGES** from other CAD programs as exact solids you can measure, fillet, cut and sketch on. Drag a file onto the window or use File → Import (⇧⌘I).
 - **Export** binary STL (Coarse/Normal/Fine) and STEP
 - **Python** console and `@cadet.command` plugins, which get an auto-generated form for their parameters
 - **Command palette** (⌘K), undo/redo, autosave, session restore, and dark and light themes
@@ -65,7 +66,8 @@ Download the build for your OS from the GitHub Releases page. It's a single self
 | F · ⇧F | Fillet · Chamfer. Click edges to toggle them, set the radius/distance, Enter |
 | I | Measure: snaps to vertices/centers/edges/faces; shows distance, ΔXYZ, exact edge length/Ø, model size, volume |
 | ⌘J | Python console (the `cadet` module is preloaded) |
-| ⌘E | Export STL / STEP |
+| ⌘E · ⇧⌘E | Export STL · STEP |
+| ⇧⌘I | Import STEP/IGES (or drop the file on the window) |
 | ⌘N ⌘O ⌘S ⇧⌘S · ⌘Z ⇧⌘Z | Files · Undo/Redo |
 | 0 1 2 3 · G | Home/Front/Right/Top views · Toggle grid |
 

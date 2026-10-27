@@ -25,6 +25,8 @@ pub enum Event {
     Model(Model),
     Hit(Option<Hit>),
     Exported(Result<(), String>),
+    /// The file's name and its geometry as BREP text.
+    Imported(String, Result<String, String>),
     Crashed(String),
 }
 
@@ -33,6 +35,7 @@ enum Pending {
     Evaluate,
     Pick,
     Export,
+    Import,
 }
 
 struct Worker {
@@ -50,6 +53,8 @@ pub struct Kernel {
     /// Features that crashed the kernel, by id and definition, so an edited feature is retried.
     skip: Vec<(u32, String)>,
     progress: Option<usize>,
+    /// File names of imports in flight, in order.
+    importing: VecDeque<String>,
 }
 
 fn spawn(ctx: &egui::Context) -> Worker {
@@ -78,7 +83,16 @@ fn spawn(ctx: &egui::Context) -> Worker {
 
 impl Kernel {
     pub fn new(ctx: &egui::Context) -> Self {
-        Self { worker: spawn(ctx), ctx: ctx.clone(), pending: VecDeque::new(), queued: None, last: None, skip: vec![], progress: None }
+        Self {
+            worker: spawn(ctx),
+            ctx: ctx.clone(),
+            pending: VecDeque::new(),
+            queued: None,
+            last: None,
+            skip: vec![],
+            progress: None,
+            importing: VecDeque::new(),
+        }
     }
 
     fn send(&mut self, req: Request, kind: Pending) {
@@ -116,6 +130,12 @@ impl Kernel {
         self.send(Request::Export { path, step, tolerance }, Pending::Export);
     }
 
+    /// Reads a STEP/IGES file in the worker; the result arrives as `Event::Imported`.
+    pub fn import(&mut self, path: PathBuf) {
+        self.importing.push_back(path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default());
+        self.send(Request::Import(path), Pending::Import);
+    }
+
     pub fn busy(&self) -> bool {
         self.pending.contains(&Pending::Evaluate)
     }
@@ -137,6 +157,7 @@ impl Kernel {
                         }
                         Response::Hit(h) => events.push(Event::Hit(h)),
                         Response::Exported(r) => events.push(Event::Exported(r)),
+                        Response::Imported(r) => events.push(Event::Imported(self.importing.pop_front().unwrap_or_default(), r)),
                         Response::Progress(_) => {}
                     }
                 }
@@ -169,6 +190,7 @@ impl Kernel {
         Event::Crashed(match (what, blamed) {
             (_, Some((.., name))) => format!("{name} couldn't be built (the kernel failed on it). Try other values"),
             (Some(Pending::Export), _) => "Export crashed the geometry kernel".into(),
+            (Some(Pending::Import), _) => format!("Couldn't import {}: it crashed the geometry kernel", self.importing.pop_front().unwrap_or_default()),
             _ => "The geometry kernel restarted after a crash".into(),
         })
     }

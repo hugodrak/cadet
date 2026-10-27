@@ -65,5 +65,10 @@ pub mod occt {
         fn ray(s: &TopoDS_Shape, origin: &[f64], dir: &[f64]) -> Result<RayHit>;
         fn write_stl(s: &TopoDS_Shape, path: &str, tol: f64) -> Result<()>;
         fn write_step(s: &TopoDS_Shape, path: &str) -> Result<()>;
+        fn read_cad(path: &str, iges: bool) -> Result<UniquePtr<TopoDS_Shape>>;
+        fn to_brep(s: &TopoDS_Shape) -> Result<String>;
+        fn from_brep(text: &str) -> Result<UniquePtr<TopoDS_Shape>>;
+        fn solid_count(s: &TopoDS_Shape) -> usize;
+        fn solid(s: &TopoDS_Shape, i: usize) -> Result<UniquePtr<TopoDS_Shape>>;
     }
 }
