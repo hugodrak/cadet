@@ -52,7 +52,7 @@ Download the build for your OS from the GitHub Releases page. It's a single self
 
 | OS | File | Notes |
 |---|---|---|
-| macOS (Apple Silicon / Intel) | `Cadet_x.y.z_aarch64.dmg` / `_x64.dmg` | Unsigned for now: right-click → **Open** the first time |
+| macOS (Apple Silicon / Intel) | `Cadet_x.y.z_aarch64.dmg` / `_x64.dmg` | Unsigned: open it once, then System Settings → Privacy & Security → **Open Anyway** |
 | Windows | `Cadet_x.y.z_x64-setup.exe` | SmartScreen may warn about an unknown publisher: **More info → Run anyway** |
 | Linux | `Cadet_x.y.z_amd64.AppImage` or `.deb` | `chmod +x Cadet*.AppImage && ./Cadet*.AppImage` |
 
@@ -97,7 +97,7 @@ cargo install cargo-packager --locked
 cargo packager --release -p cadet-app       # .app/.dmg, setup .exe, AppImage/.deb in dist/
 ```
 No CMake? `python3 -m venv ~/.local/cadet-tools && ~/.local/cadet-tools/bin/pip install cmake` and put that `bin` on your `PATH`.
-Pushing a `v*` tag builds and publishes all platforms via `.github/workflows/release.yml`.
+Releases: Actions → **release** → Run workflow → enter a version. It bumps the crates, tags `main`, and builds and publishes installers for every platform. PRs only run the checks.
 
 Dev hooks: `CADET_SCREENSHOT=out.png` screenshots and exits. `CADET_SCRIPT=steps.txt` replays scripted input (`crates/cadet-app/src/devtools.rs`). `CADET_KERNEL_CRASH_ON=<feature>` tests crash recovery.
 
